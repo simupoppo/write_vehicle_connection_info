@@ -9,10 +9,9 @@
     <pre id="output"></pre>
     <script type="text/javascript">
         async function main() {
-+           let pyodide = await loadPyodide();
-+           let result = pyodide.runPython(`"Hello World"`);
-+           document.getElementById("output").innerText = result;
--           document.getElementById("output").innerText = "Hello World";
+           let pyodide = await loadPyodide();
+           let result = pyodide.runPython(`"Hello World"`);
+           document.getElementById("output").innerText = result;
         }
     </script>
 </body>
