@@ -215,6 +215,27 @@
 
       outputText.textContent = output || "(関連付けがありません)";
     });
+    const saveButton = document.getElementById("saveButton");
+    
+    saveButton.addEventListener("click", function () {
+    const text = outputText.textContent.trim();
+    if (text === "") {
+      alert("出力結果が空です。");
+      return;
+    }
+    
+    const blob = new Blob([text], { type: "text/plain" });
+    const url = URL.createObjectURL(blob);
+    
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "output.txt";
+    document.body.appendChild(a);
+    a.click();
+    
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    });
   </script>
 
 
