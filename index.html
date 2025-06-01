@@ -9,7 +9,7 @@
     }
     .item, .relation-entry {
       display: grid;
-      grid-template-columns: 80px 40px 40px 80px 60px;
+      grid-template-columns: 200px 40px 40px 200px 60px;
       align-items: center;
       gap: 8px;
       margin-bottom: 5px;
@@ -76,6 +76,7 @@
 
       if (nameSet.has(newText)) {
         alert(`"${newText}" はすでに追加されています。別の名前を入力してください。`);
+        input.value = "";  // 入力欄を消去する対応を追加
         return;
       }
 
@@ -155,7 +156,7 @@
             entry.setAttribute("data-key", key);
 
             const msg = document.createElement("span");
-            msg.textContent = `${parent} が ${child} と関連付けされました。`;
+            msg.textContent = `${parent} は ${child} を後ろに連結できます`;
 
             const deleteBtn = document.createElement("button");
             deleteBtn.textContent = "削除";
@@ -163,6 +164,8 @@
               relationList.removeChild(entry);
               relations.delete(key);
             });
+            // 削除ボタンを左に表示
+            entry.appendChild(deleteBtn);
 
             entry.appendChild(msg);
             entry.appendChild(deleteBtn);
@@ -171,7 +174,7 @@
         });
       });
 
-      // 🔄 チェックをすべて外す
+      // チェックをすべて外す
       items.forEach(item => {
         const checkboxes = item.querySelectorAll("input[type='checkbox']");
         checkboxes[0].checked = false;
