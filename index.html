@@ -187,9 +187,9 @@
     });
   });
 
-  // 出力処理
   outputButton.addEventListener("click", function () {
-    const allNames = Array.from(nameSet).filter(n => !SYSTEM_NAMES.includes(n));
+    const allNames = Array.from(nameSet).sort();
+
     const parentsMap = {};
     const childrenMap = {};
 
@@ -204,13 +204,11 @@
     });
 
     let output = "";
-    const sortedNames = allNames.sort();
 
-    sortedNames.forEach((name) => {
-      const prevList = (parentsMap[name] || []).filter(n => !SYSTEM_NAMES.includes(n));
+    allNames.forEach((name) => {
+      if (SYSTEM_NAMES.includes(name)) return; // 出力対象にはしない
+
       const rawPrev = parentsMap[name] || [];
-
-      const nextList = (childrenMap[name] || []).filter(n => !SYSTEM_NAMES.includes(n));
       const rawNext = childrenMap[name] || [];
 
       const hasBothSpecialParents = rawPrev.includes("none") && rawPrev.includes("any");
@@ -220,13 +218,13 @@
       output += `#${name}\n`;
 
       if (!hasBothSpecialParents) {
-        prevList.forEach((p, i) => {
+        rawPrev.forEach((p, i) => {
           output += `Constraint[prev][${i}]=${p}\n`;
         });
       }
 
       if (!hasBothSpecialChildren) {
-        nextList.forEach((c, i) => {
+        rawNext.forEach((c, i) => {
           output += `Constraint[next][${i}]=${c}\n`;
         });
       }
@@ -235,7 +233,6 @@
     outputText.textContent = output || "(関連付けがありません)";
   });
 
-  // 保存処理
   saveButton.addEventListener("click", function () {
     const text = outputText.textContent.trim();
     if (text === "") {
