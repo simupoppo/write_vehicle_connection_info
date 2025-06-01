@@ -17,10 +17,19 @@
     <strong>表示欄:</strong>
     <div id="textList"></div>
   </div>
+  <button id="selectButton">選択</button>
+
+  <div id="relatedList">
+    <strong>関連付けされた項目:</strong>
+    <ul id="relationResults"></ul>
+  </div>
+
   <script>
     const form = document.getElementById("textForm");
     const input = document.getElementById("textInput");
     const textList = document.getElementById("textList");
+    const selectButton = document.getElementById("selectButton");
+    const relationResults = document.getElementById("relationResults");
 
     form.addEventListener("submit", function(event) {
       event.preventDefault();
@@ -30,21 +39,19 @@
         const itemDiv = document.createElement("div");
         itemDiv.className = "item";
 
-        // 左側のテキスト
+        // 左右のテキスト
         const textLeft = document.createElement("span");
         textLeft.textContent = newText;
 
-        // チェックボックス1
+        const textRight = document.createElement("span");
+        textRight.textContent = newText;
+
+        // チェックボックス2つ
         const checkbox1 = document.createElement("input");
         checkbox1.type = "checkbox";
 
-        // チェックボックス2
         const checkbox2 = document.createElement("input");
         checkbox2.type = "checkbox";
-
-        // 右側のテキスト（同じ内容）
-        const textRight = document.createElement("span");
-        textRight.textContent = newText;
 
         // 削除ボタン
         const deleteBtn = document.createElement("button");
@@ -53,7 +60,10 @@
           textList.removeChild(itemDiv);
         });
 
-        // 要素を順番に追加
+        // データ属性で記録用に文字列を保持
+        itemDiv.setAttribute("data-text", newText);
+
+        // 要素構成
         itemDiv.appendChild(textLeft);
         itemDiv.appendChild(checkbox1);
         itemDiv.appendChild(checkbox2);
@@ -64,7 +74,24 @@
         input.value = "";
       }
     });
+
+    // 「選択」ボタンの動作
+    selectButton.addEventListener("click", function () {
+      const items = document.querySelectorAll(".item");
+      relationResults.innerHTML = ""; // 前回の結果をクリア
+
+      items.forEach(item => {
+        const checkboxes = item.querySelectorAll("input[type='checkbox']");
+        if (checkboxes.length === 2 && checkboxes[0].checked && checkboxes[1].checked) {
+          const text = item.getAttribute("data-text");
+          const li = document.createElement("li");
+          li.textContent = `"${text}" が関連付けられました。`;
+          relationResults.appendChild(li);
+        }
+      });
+    });
   </script>
+
 
 
 </body>
