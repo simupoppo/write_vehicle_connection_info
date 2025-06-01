@@ -44,18 +44,13 @@
   <div id="textList"></div>
 
   <button id="selectButton">選択</button>
+<button id="saveButton">保存</button>
 
-  <div id="result">
-    <p>関連付け確認欄:</p>
-    <div id="relationList"></div>
-  </div>
-    
-  <button id="outputButton">出力</button>
+<div id="output">
+  <h3>結果:</h3>
+  <div id="outputText"></div>
+</div>
 
-  <div id="output">
-    <p>結果:</p>
-    <div id="outputText"></div>
-  </div>
 <script>
   const form = document.getElementById("textForm");
   const input = document.getElementById("textInput");
@@ -69,7 +64,8 @@
   const relations = new Set(); // "親->子"
   const nameSet = new Set();
 
-  // 項目追加関数
+  const SYSTEM_NAMES = ["none", "any"];
+
   function addItem(newText, isSystem = false) {
     if (nameSet.has(newText)) return;
     nameSet.add(newText);
@@ -82,10 +78,10 @@
     labelLeft.textContent = newText;
 
     const checkbox1 = document.createElement("input");
-    checkbox1.type = "checkbox"; // 親
+    checkbox1.type = "checkbox";
 
     const checkbox2 = document.createElement("input");
-    checkbox2.type = "checkbox"; // 子
+    checkbox2.type = "checkbox";
 
     const labelRight = document.createElement("span");
     labelRight.textContent = newText;
@@ -97,7 +93,6 @@
     deleteBtn.addEventListener("click", function () {
       textList.removeChild(itemDiv);
       nameSet.delete(newText);
-
       [...relations].forEach((key) => {
         if (key.startsWith(newText + "->") || key.endsWith("->" + newText)) {
           relations.delete(key);
@@ -118,27 +113,25 @@
     textList.appendChild(itemDiv);
   }
 
-  // 最初に none, any を追加（削除不可）
+  // 初期追加: "none", "any"
   addItem("none", true);
   addItem("any", true);
 
-  // 入力フォーム処理
+  // 入力処理
   form.addEventListener("submit", function (event) {
     event.preventDefault();
     const newText = input.value.trim();
     if (newText === "") return;
-
     if (nameSet.has(newText)) {
       alert(`"${newText}" はすでに追加されています。`);
       input.value = "";
       return;
     }
-
     addItem(newText);
     input.value = "";
   });
 
-  // 「選択」ボタン処理
+  // 選択ボタン処理
   selectButton.addEventListener("click", function () {
     const items = document.querySelectorAll(".item");
     let parents = [];
@@ -173,17 +166,15 @@
           });
 
           entry.appendChild(deleteBtn);
-
           const msg = document.createElement("span");
           msg.textContent = `${parent} が ${child} と関連付けされました。`;
           entry.appendChild(msg);
-
           relationList.appendChild(entry);
         }
       });
     });
 
-    // チェックボックスをリセット
+    // チェックボックス初期化
     items.forEach((item) => {
       const checkboxes = item.querySelectorAll("input[type='checkbox']");
       checkboxes[0].checked = false;
@@ -191,16 +182,18 @@
     });
   });
 
-  // 「出力」ボタン処理
+  // 出力処理
   outputButton.addEventListener("click", function () {
-    const allNames = Array.from(nameSet);
+    const allNames = Array.from(nameSet).filter(n => !SYSTEM_NAMES.includes(n));
     const parentsMap = {};
     const childrenMap = {};
 
     relations.forEach((relation) => {
       const [parent, child] = relation.split("->");
+
       if (!childrenMap[parent]) childrenMap[parent] = [];
       if (!parentsMap[child]) parentsMap[child] = [];
+
       childrenMap[parent].push(child);
       parentsMap[child].push(parent);
     });
@@ -209,11 +202,14 @@
     const sortedNames = allNames.sort();
 
     sortedNames.forEach((name) => {
-      const prevList = parentsMap[name] || [];
-      const nextList = childrenMap[name] || [];
+      const prevList = (parentsMap[name] || []).filter(n => !SYSTEM_NAMES.includes(n));
+      const rawPrev = parentsMap[name] || [];
 
-      const hasBothSpecialParents = prevList.includes("none") && prevList.includes("any");
-      const hasBothSpecialChildren = nextList.includes("none") && nextList.includes("any");
+      const nextList = (childrenMap[name] || []).filter(n => !SYSTEM_NAMES.includes(n));
+      const rawNext = childrenMap[name] || [];
+
+      const hasBothSpecialParents = rawPrev.includes("none") && rawPrev.includes("any");
+      const hasBothSpecialChildren = rawNext.includes("none") && rawNext.includes("any");
 
       output += "------\n";
       output += `#${name}\n`;
@@ -234,7 +230,7 @@
     outputText.textContent = output || "(関連付けがありません)";
   });
 
-  // 「保存」ボタン処理
+  // 保存処理
   saveButton.addEventListener("click", function () {
     const text = outputText.textContent.trim();
     if (text === "") {
@@ -250,12 +246,10 @@
     a.download = "output.txt";
     document.body.appendChild(a);
     a.click();
-
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
   });
 </script>
-
 
 </body>
 </html>
