@@ -1,0 +1,1 @@
+# write_vehicle_connection_info
