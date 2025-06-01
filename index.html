@@ -30,6 +30,10 @@
         const itemDiv = document.createElement("div");
         itemDiv.className = "item";
 
+        // 左側のテキスト
+        const textLeft = document.createElement("span");
+        textLeft.textContent = newText;
+
         // チェックボックス1
         const checkbox1 = document.createElement("input");
         checkbox1.type = "checkbox";
@@ -38,9 +42,9 @@
         const checkbox2 = document.createElement("input");
         checkbox2.type = "checkbox";
 
-        // テキスト表示
-        const textSpan = document.createElement("span");
-        textSpan.textContent = newText;
+        // 右側のテキスト（同じ内容）
+        const textRight = document.createElement("span");
+        textRight.textContent = newText;
 
         // 削除ボタン
         const deleteBtn = document.createElement("button");
@@ -49,13 +53,14 @@
           textList.removeChild(itemDiv);
         });
 
-        // 要素を追加
+        // 要素を順番に追加
+        itemDiv.appendChild(textLeft);
         itemDiv.appendChild(checkbox1);
         itemDiv.appendChild(checkbox2);
-        itemDiv.appendChild(textSpan);
+        itemDiv.appendChild(textRight);
         itemDiv.appendChild(deleteBtn);
-        textList.appendChild(itemDiv);
 
+        textList.appendChild(itemDiv);
         input.value = "";
       }
     });
