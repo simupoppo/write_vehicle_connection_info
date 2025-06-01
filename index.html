@@ -21,6 +21,13 @@
     <h3>関連付け確認欄:</h3>
     <div id="relationList"></div>
   </div>
+    
+  <button id="outputButton">出力</button>
+
+  <div id="output">
+    <h3>結果:</h3>
+    <div id="outputText"></div>
+  </div>
 
   <script>
     const form = document.getElementById("textForm");
@@ -28,9 +35,10 @@
     const textList = document.getElementById("textList");
     const selectButton = document.getElementById("selectButton");
     const relationList = document.getElementById("relationList");
+    const outputButton = document.getElementById("outputButton");
+    const outputText = document.getElementById("outputText");
 
-    // 登録された関係を記録するセット（"親->子" 形式）
-    const relations = new Set();
+    const relations = new Set(); // 保存形式: "親->子"
 
     form.addEventListener("submit", function(event) {
       event.preventDefault();
@@ -44,10 +52,10 @@
         labelLeft.textContent = newText;
 
         const checkbox1 = document.createElement("input");
-        checkbox1.type = "checkbox"; // 親
+        checkbox1.type = "checkbox"; // 親チェック
 
         const checkbox2 = document.createElement("input");
-        checkbox2.type = "checkbox"; // 子
+        checkbox2.type = "checkbox"; // 子チェック
 
         const labelRight = document.createElement("span");
         labelRight.textContent = newText;
@@ -80,12 +88,8 @@
       items.forEach(item => {
         const checkboxes = item.querySelectorAll("input[type='checkbox']");
         const name = item.getAttribute("data-name");
-        if (checkboxes[0].checked) {
-          parents.push(name);
-        }
-        if (checkboxes[1].checked) {
-          children.push(name);
-        }
+        if (checkboxes[0].checked) parents.push(name);
+        if (checkboxes[1].checked) children.push(name);
       });
 
       if (parents.length === 0 || children.length === 0) {
@@ -119,12 +123,52 @@
         });
       });
 
-      // すべてのチェックをリセット
+      // 🔄 チェックをすべて外す
       items.forEach(item => {
         const checkboxes = item.querySelectorAll("input[type='checkbox']");
         checkboxes[0].checked = false;
         checkboxes[1].checked = false;
       });
+    });
+
+    outputButton.addEventListener("click", function () {
+      const nameSet = new Set();
+      const parentsMap = {};
+      const childrenMap = {};
+
+      // 関係を解析
+      relations.forEach(relation => {
+        const [parent, child] = relation.split("->");
+        nameSet.add(parent);
+        nameSet.add(child);
+
+        if (!childrenMap[parent]) childrenMap[parent] = [];
+        if (!parentsMap[child]) parentsMap[child] = [];
+
+        childrenMap[parent].push(child);
+        parentsMap[child].push(parent);
+      });
+
+      // 出力構築
+      let output = "";
+      const sortedNames = Array.from(nameSet).sort();
+
+      sortedNames.forEach(name => {
+        output += "------\n";
+        output += `#${name}\n`;
+
+        const prevList = parentsMap[name] || [];
+        prevList.forEach((p, i) => {
+          output += `Constraint[prev][${i}]=${p}\n`;
+        });
+
+        const nextList = childrenMap[name] || [];
+        nextList.forEach((c, i) => {
+          output += `Constraint[next][${i}]=${c}\n`;
+        });
+      });
+
+      outputText.textContent = output || "(関連付けがありません)";
     });
   </script>
 
