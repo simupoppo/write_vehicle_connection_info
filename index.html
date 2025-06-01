@@ -2,7 +2,33 @@
 <head>
     <meta charset="UTF-8">
     <title>simutrans 連結用dat自動記述アプリ</title>
-    <script src="https://cdn.jsdelivr.net/pyodide/v0.27.2/full/pyodide.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+    .item, .relation-entry {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 5px;
+    }
+    .relation-entry button {
+      background-color: #d44;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    #result, #output {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #888;
+      background-color: #f5f5f5;
+      white-space: pre-wrap;
+    }
+  </style>
 </head>
 <body>
 
