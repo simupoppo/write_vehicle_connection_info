@@ -18,8 +18,8 @@
   <button id="selectButton">選択</button>
 
   <div id="result">
-    <h3>関連付け結果:</h3>
-    <ul id="relationList"></ul>
+    <h3>関連付け確認欄:</h3>
+    <div id="relationList"></div>
   </div>
 
   <script>
@@ -29,7 +29,7 @@
     const selectButton = document.getElementById("selectButton");
     const relationList = document.getElementById("relationList");
 
-    // 関連を記録するセット（重複排除）
+    // 登録された関係を記録するセット（"親->子" 形式）
     const relations = new Set();
 
     form.addEventListener("submit", function(event) {
@@ -44,21 +44,21 @@
         labelLeft.textContent = newText;
 
         const checkbox1 = document.createElement("input");
-        checkbox1.type = "checkbox"; // 親（基準）
+        checkbox1.type = "checkbox"; // 親
 
         const checkbox2 = document.createElement("input");
-        checkbox2.type = "checkbox"; // 子（関連対象）
+        checkbox2.type = "checkbox"; // 子
 
         const labelRight = document.createElement("span");
         labelRight.textContent = newText;
 
         const deleteBtn = document.createElement("button");
         deleteBtn.textContent = "削除";
+        deleteBtn.type = "button";
         deleteBtn.addEventListener("click", function () {
           textList.removeChild(itemDiv);
         });
 
-        // データ属性に名前を記録
         itemDiv.setAttribute("data-name", newText);
 
         itemDiv.appendChild(labelLeft);
@@ -77,7 +77,6 @@
       let parents = [];
       let children = [];
 
-      // チェック状態から親と子を分類
       items.forEach(item => {
         const checkboxes = item.querySelectorAll("input[type='checkbox']");
         const name = item.getAttribute("data-name");
@@ -94,21 +93,40 @@
         return;
       }
 
-      // 親×子の全組み合わせに対して処理（同一でもOK）
       parents.forEach(parent => {
         children.forEach(child => {
           const key = `${parent}->${child}`;
           if (!relations.has(key)) {
             relations.add(key);
-            const li = document.createElement("li");
-            li.textContent = `"${parent}" が "${child}" と関連付けされました。`;
-            relationList.appendChild(li);
+            const entry = document.createElement("div");
+            entry.className = "relation-entry";
+            entry.setAttribute("data-key", key);
+
+            const msg = document.createElement("span");
+            msg.textContent = `${parent} が ${child} と関連付けされました。`;
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "削除";
+            deleteBtn.addEventListener("click", function () {
+              relationList.removeChild(entry);
+              relations.delete(key);
+            });
+
+            entry.appendChild(msg);
+            entry.appendChild(deleteBtn);
+            relationList.appendChild(entry);
           }
         });
       });
+
+      // すべてのチェックをリセット
+      items.forEach(item => {
+        const checkboxes = item.querySelectorAll("input[type='checkbox']");
+        checkboxes[0].checked = false;
+        checkboxes[1].checked = false;
+      });
     });
   </script>
-
 
 
 </body>
