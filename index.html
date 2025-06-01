@@ -8,17 +8,16 @@
       margin: 20px;
     }
     .item, .relation-entry {
-      display: flex;
+      display: grid;
+      grid-template-columns: 80px 40px 40px 80px 60px;
       align-items: center;
       gap: 8px;
       margin-bottom: 5px;
     }
-    .relation-entry button {
-      background-color: #d44;
-      color: white;
-      border: none;
-      padding: 2px 6px;
-      border-radius: 4px;
+    .relation-entry {
+      grid-template-columns: 1fr auto;
+    }
+    button {
       cursor: pointer;
     }
     #result, #output {
@@ -27,6 +26,9 @@
       border: 1px solid #888;
       background-color: #f5f5f5;
       white-space: pre-wrap;
+    }
+    #textList {
+      margin-top: 10px;
     }
   </style>
 </head>
@@ -65,45 +67,65 @@
     const outputText = document.getElementById("outputText");
 
     const relations = new Set(); // 保存形式: "親->子"
+    const nameSet = new Set(); // 重複防止用の名前集合
 
     form.addEventListener("submit", function(event) {
       event.preventDefault();
-
       const newText = input.value.trim();
-      if (newText !== "") {
-        const itemDiv = document.createElement("div");
-        itemDiv.className = "item";
+      if (newText === "") return;
 
-        const labelLeft = document.createElement("span");
-        labelLeft.textContent = newText;
-
-        const checkbox1 = document.createElement("input");
-        checkbox1.type = "checkbox"; // 親チェック
-
-        const checkbox2 = document.createElement("input");
-        checkbox2.type = "checkbox"; // 子チェック
-
-        const labelRight = document.createElement("span");
-        labelRight.textContent = newText;
-
-        const deleteBtn = document.createElement("button");
-        deleteBtn.textContent = "削除";
-        deleteBtn.type = "button";
-        deleteBtn.addEventListener("click", function () {
-          textList.removeChild(itemDiv);
-        });
-
-        itemDiv.setAttribute("data-name", newText);
-
-        itemDiv.appendChild(labelLeft);
-        itemDiv.appendChild(checkbox1);
-        itemDiv.appendChild(checkbox2);
-        itemDiv.appendChild(labelRight);
-        itemDiv.appendChild(deleteBtn);
-
-        textList.appendChild(itemDiv);
-        input.value = "";
+      if (nameSet.has(newText)) {
+        alert(`"${newText}" はすでに追加されています。別の名前を入力してください。`);
+        return;
       }
+
+      nameSet.add(newText);
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "item";
+      itemDiv.setAttribute("data-name", newText);
+
+      const labelLeft = document.createElement("span");
+      labelLeft.textContent = newText;
+
+      const checkbox1 = document.createElement("input");
+      checkbox1.type = "checkbox"; // 親
+
+      const checkbox2 = document.createElement("input");
+      checkbox2.type = "checkbox"; // 子
+
+      const labelRight = document.createElement("span");
+      labelRight.textContent = newText;
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "削除";
+      deleteBtn.type = "button";
+      deleteBtn.addEventListener("click", function () {
+        textList.removeChild(itemDiv);
+        nameSet.delete(newText);
+
+        // 関連も削除（オプション：削除しないならこの部分は削除可）
+        [...relations].forEach(key => {
+          if (key.startsWith(newText + "->") || key.endsWith("->" + newText)) {
+            relations.delete(key);
+            // 関連表示欄も更新
+            document.querySelectorAll('.relation-entry').forEach(entry => {
+              if (entry.getAttribute('data-key') === key) {
+                entry.remove();
+              }
+            });
+          }
+        });
+      });
+
+      itemDiv.appendChild(labelLeft);
+      itemDiv.appendChild(checkbox1);
+      itemDiv.appendChild(checkbox2);
+      itemDiv.appendChild(labelRight);
+      itemDiv.appendChild(deleteBtn);
+
+      textList.appendChild(itemDiv);
+      input.value = "";
     });
 
     selectButton.addEventListener("click", function () {
@@ -158,26 +180,20 @@
     });
 
     outputButton.addEventListener("click", function () {
-      const nameSet = new Set();
+      const allNames = Array.from(nameSet);
       const parentsMap = {};
       const childrenMap = {};
 
-      // 関係を解析
       relations.forEach(relation => {
         const [parent, child] = relation.split("->");
-        nameSet.add(parent);
-        nameSet.add(child);
-
         if (!childrenMap[parent]) childrenMap[parent] = [];
         if (!parentsMap[child]) parentsMap[child] = [];
-
         childrenMap[parent].push(child);
         parentsMap[child].push(parent);
       });
 
-      // 出力構築
       let output = "";
-      const sortedNames = Array.from(nameSet).sort();
+      const sortedNames = allNames.sort();
 
       sortedNames.forEach(name => {
         output += "------\n";
