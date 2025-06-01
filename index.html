@@ -46,197 +46,215 @@
   <button id="selectButton">選択</button>
 
   <div id="result">
-    <h3>関連付け確認欄:</h3>
+    <p>関連付け確認欄:</p>
     <div id="relationList"></div>
   </div>
     
   <button id="outputButton">出力</button>
 
   <div id="output">
-    <h3>結果:</h3>
+    <p>結果:</p>
     <div id="outputText"></div>
   </div>
+<script>
+  const form = document.getElementById("textForm");
+  const input = document.getElementById("textInput");
+  const textList = document.getElementById("textList");
+  const selectButton = document.getElementById("selectButton");
+  const relationList = document.getElementById("relationList");
+  const outputButton = document.getElementById("outputButton");
+  const outputText = document.getElementById("outputText");
+  const saveButton = document.getElementById("saveButton");
 
-  <script>
-    const form = document.getElementById("textForm");
-    const input = document.getElementById("textInput");
-    const textList = document.getElementById("textList");
-    const selectButton = document.getElementById("selectButton");
-    const relationList = document.getElementById("relationList");
-    const outputButton = document.getElementById("outputButton");
-    const outputText = document.getElementById("outputText");
+  const relations = new Set(); // "親->子"
+  const nameSet = new Set();
 
-    const relations = new Set(); // 保存形式: "親->子"
-    const nameSet = new Set(); // 重複防止用の名前集合
+  // 項目追加関数
+  function addItem(newText, isSystem = false) {
+    if (nameSet.has(newText)) return;
+    nameSet.add(newText);
 
-    form.addEventListener("submit", function(event) {
-      event.preventDefault();
-      const newText = input.value.trim();
-      if (newText === "") return;
+    const itemDiv = document.createElement("div");
+    itemDiv.className = "item";
+    itemDiv.setAttribute("data-name", newText);
 
-      if (nameSet.has(newText)) {
-        alert(`"${newText}" はすでに追加されています。別の名前を入力してください。`);
-        input.value = "";  // 入力欄を消去する対応を追加
-        return;
-      }
+    const labelLeft = document.createElement("span");
+    labelLeft.textContent = newText;
 
-      nameSet.add(newText);
+    const checkbox1 = document.createElement("input");
+    checkbox1.type = "checkbox"; // 親
 
-      const itemDiv = document.createElement("div");
-      itemDiv.className = "item";
-      itemDiv.setAttribute("data-name", newText);
+    const checkbox2 = document.createElement("input");
+    checkbox2.type = "checkbox"; // 子
 
-      const labelLeft = document.createElement("span");
-      labelLeft.textContent = newText;
+    const labelRight = document.createElement("span");
+    labelRight.textContent = newText;
 
-      const checkbox1 = document.createElement("input");
-      checkbox1.type = "checkbox"; // 親
+    const deleteBtn = document.createElement("button");
+    deleteBtn.textContent = "削除";
+    deleteBtn.type = "button";
+    deleteBtn.disabled = isSystem;
+    deleteBtn.addEventListener("click", function () {
+      textList.removeChild(itemDiv);
+      nameSet.delete(newText);
 
-      const checkbox2 = document.createElement("input");
-      checkbox2.type = "checkbox"; // 子
-
-      const labelRight = document.createElement("span");
-      labelRight.textContent = newText;
-
-      const deleteBtn = document.createElement("button");
-      deleteBtn.textContent = "削除";
-      deleteBtn.type = "button";
-      deleteBtn.addEventListener("click", function () {
-        textList.removeChild(itemDiv);
-        nameSet.delete(newText);
-
-        // 関連も削除（オプション：削除しないならこの部分は削除可）
-        [...relations].forEach(key => {
-          if (key.startsWith(newText + "->") || key.endsWith("->" + newText)) {
-            relations.delete(key);
-            // 関連表示欄も更新
-            document.querySelectorAll('.relation-entry').forEach(entry => {
-              if (entry.getAttribute('data-key') === key) {
-                entry.remove();
-              }
-            });
-          }
-        });
+      [...relations].forEach((key) => {
+        if (key.startsWith(newText + "->") || key.endsWith("->" + newText)) {
+          relations.delete(key);
+          document.querySelectorAll(".relation-entry").forEach((entry) => {
+            if (entry.getAttribute("data-key") === key) {
+              entry.remove();
+            }
+          });
+        }
       });
+    });
 
-      itemDiv.appendChild(labelLeft);
-      itemDiv.appendChild(checkbox1);
-      itemDiv.appendChild(checkbox2);
-      itemDiv.appendChild(labelRight);
-      itemDiv.appendChild(deleteBtn);
+    itemDiv.appendChild(labelLeft);
+    itemDiv.appendChild(checkbox1);
+    itemDiv.appendChild(checkbox2);
+    itemDiv.appendChild(labelRight);
+    itemDiv.appendChild(deleteBtn);
+    textList.appendChild(itemDiv);
+  }
 
-      textList.appendChild(itemDiv);
+  // 最初に none, any を追加（削除不可）
+  addItem("none", true);
+  addItem("any", true);
+
+  // 入力フォーム処理
+  form.addEventListener("submit", function (event) {
+    event.preventDefault();
+    const newText = input.value.trim();
+    if (newText === "") return;
+
+    if (nameSet.has(newText)) {
+      alert(`"${newText}" はすでに追加されています。`);
       input.value = "";
+      return;
+    }
+
+    addItem(newText);
+    input.value = "";
+  });
+
+  // 「選択」ボタン処理
+  selectButton.addEventListener("click", function () {
+    const items = document.querySelectorAll(".item");
+    let parents = [];
+    let children = [];
+
+    items.forEach((item) => {
+      const checkboxes = item.querySelectorAll("input[type='checkbox']");
+      const name = item.getAttribute("data-name");
+      if (checkboxes[0].checked) parents.push(name);
+      if (checkboxes[1].checked) children.push(name);
     });
 
-    selectButton.addEventListener("click", function () {
-      const items = document.querySelectorAll(".item");
-      let parents = [];
-      let children = [];
+    if (parents.length === 0 || children.length === 0) {
+      alert("親または子のチェックがありません。");
+      return;
+    }
 
-      items.forEach(item => {
-        const checkboxes = item.querySelectorAll("input[type='checkbox']");
-        const name = item.getAttribute("data-name");
-        if (checkboxes[0].checked) parents.push(name);
-        if (checkboxes[1].checked) children.push(name);
-      });
+    parents.forEach((parent) => {
+      children.forEach((child) => {
+        const key = `${parent}->${child}`;
+        if (!relations.has(key)) {
+          relations.add(key);
+          const entry = document.createElement("div");
+          entry.className = "relation-entry";
+          entry.setAttribute("data-key", key);
 
-      if (parents.length === 0 || children.length === 0) {
-        alert("親または子のチェックがありません。");
-        return;
-      }
+          const deleteBtn = document.createElement("button");
+          deleteBtn.textContent = "削除";
+          deleteBtn.addEventListener("click", function () {
+            relationList.removeChild(entry);
+            relations.delete(key);
+          });
 
-      parents.forEach(parent => {
-        children.forEach(child => {
-          const key = `${parent}->${child}`;
-          if (!relations.has(key)) {
-            relations.add(key);
-            const entry = document.createElement("div");
-            entry.className = "relation-entry";
-            entry.setAttribute("data-key", key);
+          entry.appendChild(deleteBtn);
 
-            const msg = document.createElement("span");
-            msg.textContent = `${parent} は ${child} を後ろに連結できます`;
+          const msg = document.createElement("span");
+          msg.textContent = `${parent} が ${child} と関連付けされました。`;
+          entry.appendChild(msg);
 
-            const deleteBtn = document.createElement("button");
-            deleteBtn.textContent = "削除";
-            deleteBtn.addEventListener("click", function () {
-              relationList.removeChild(entry);
-              relations.delete(key);
-            });
-            // 削除ボタンを左に表示
-            entry.appendChild(deleteBtn);
-
-            entry.appendChild(msg);
-            entry.appendChild(deleteBtn);
-            relationList.appendChild(entry);
-          }
-        });
-      });
-
-      // チェックをすべて外す
-      items.forEach(item => {
-        const checkboxes = item.querySelectorAll("input[type='checkbox']");
-        checkboxes[0].checked = false;
-        checkboxes[1].checked = false;
+          relationList.appendChild(entry);
+        }
       });
     });
 
-    outputButton.addEventListener("click", function () {
-      const allNames = Array.from(nameSet);
-      const parentsMap = {};
-      const childrenMap = {};
+    // チェックボックスをリセット
+    items.forEach((item) => {
+      const checkboxes = item.querySelectorAll("input[type='checkbox']");
+      checkboxes[0].checked = false;
+      checkboxes[1].checked = false;
+    });
+  });
 
-      relations.forEach(relation => {
-        const [parent, child] = relation.split("->");
-        if (!childrenMap[parent]) childrenMap[parent] = [];
-        if (!parentsMap[child]) parentsMap[child] = [];
-        childrenMap[parent].push(child);
-        parentsMap[child].push(parent);
-      });
+  // 「出力」ボタン処理
+  outputButton.addEventListener("click", function () {
+    const allNames = Array.from(nameSet);
+    const parentsMap = {};
+    const childrenMap = {};
 
-      let output = "";
-      const sortedNames = allNames.sort();
+    relations.forEach((relation) => {
+      const [parent, child] = relation.split("->");
+      if (!childrenMap[parent]) childrenMap[parent] = [];
+      if (!parentsMap[child]) parentsMap[child] = [];
+      childrenMap[parent].push(child);
+      parentsMap[child].push(parent);
+    });
 
-      sortedNames.forEach(name => {
-        output += "------\n";
-        output += `#${name}\n`;
+    let output = "";
+    const sortedNames = allNames.sort();
 
-        const prevList = parentsMap[name] || [];
+    sortedNames.forEach((name) => {
+      const prevList = parentsMap[name] || [];
+      const nextList = childrenMap[name] || [];
+
+      const hasBothSpecialParents = prevList.includes("none") && prevList.includes("any");
+      const hasBothSpecialChildren = nextList.includes("none") && nextList.includes("any");
+
+      output += "------\n";
+      output += `#${name}\n`;
+
+      if (!hasBothSpecialParents) {
         prevList.forEach((p, i) => {
           output += `Constraint[prev][${i}]=${p}\n`;
         });
+      }
 
-        const nextList = childrenMap[name] || [];
+      if (!hasBothSpecialChildren) {
         nextList.forEach((c, i) => {
           output += `Constraint[next][${i}]=${c}\n`;
         });
-      });
-
-      outputText.textContent = output || "(関連付けがありません)";
+      }
     });
-    const saveButton = document.getElementById("saveButton");
-    
-    saveButton.addEventListener("click", function () {
+
+    outputText.textContent = output || "(関連付けがありません)";
+  });
+
+  // 「保存」ボタン処理
+  saveButton.addEventListener("click", function () {
     const text = outputText.textContent.trim();
     if (text === "") {
       alert("出力結果が空です。");
       return;
     }
-    
+
     const blob = new Blob([text], { type: "text/plain" });
     const url = URL.createObjectURL(blob);
-    
+
     const a = document.createElement("a");
     a.href = url;
     a.download = "output.txt";
     document.body.appendChild(a);
     a.click();
-    
+
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    });
-  </script>
+  });
+</script>
 
 
 </body>
