@@ -1,0 +1,462 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8" />
+  <title>関連付けツール</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 20px;
+    }
+
+    /* 入力フォーム周り */
+    h2 {
+      margin-bottom: 8px;
+    }
+    #textForm {
+      margin-bottom: 12px;
+    }
+    #textForm input[type="text"] {
+      width: 200px;
+      padding: 4px;
+      margin-right: 8px;
+    }
+    #textForm button {
+      padding: 4px 12px;
+    }
+
+    /* 項目リスト */
+    #textList {
+      margin-bottom: 12px;
+    }
+    .item {
+      display: grid;
+      grid-template-columns: 150px 40px 40px 150px 60px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .item span {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .item button {
+      padding: 2px 6px;
+      cursor: pointer;
+    }
+
+    /* 関連付け確認欄 */
+    #result {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #888;
+      background-color: #f5f5f5;
+      white-space: pre-wrap;
+    }
+    #relationList {
+      margin-top: 8px;
+    }
+    .relation-entry {
+      display: grid;
+      grid-template-columns: auto 60px;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 4px;
+    }
+    .relation-entry button {
+      background-color: #d44;
+      color: white;
+      border: none;
+      padding: 2px 6px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .relation-entry button:hover {
+      background-color: #b22;
+    }
+
+    /* 出力欄 */
+    #output {
+      margin-top: 20px;
+      padding: 10px;
+      border: 1px solid #888;
+      background-color: #f5f5f5;
+      white-space: pre-wrap;
+    }
+    #outputText {
+      margin-top: 8px;
+    }
+    #outputButton,
+    #saveButton {
+      margin-right: 8px;
+      padding: 4px 12px;
+      cursor: pointer;
+    }
+
+    /* 親子関係図 */
+    #graphSection {
+      margin-top: 24px;
+    }
+    #relation-graph-container {
+      position: relative;
+      width: 100%;
+      height: 400px;
+      border: 1px solid #ccc;
+      margin-top: 10px;
+      background-color: #fff;
+    }
+    #relation-lines {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 0;
+    }
+    #relation-nodes {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      z-index: 1;
+    }
+    .graph-node {
+      position: absolute;
+      padding: 2px 6px;
+      border: 1px solid #000;
+      border-radius: 6px;
+      background: #fff;
+      font-size: 14px;
+      text-align: center;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- 入力フォーム -->
+  <h2>文字入力フォーム</h2>
+  <form id="textForm">
+    <input type="text" id="textInput" placeholder="ここに文字を入力" required />
+    <button type="submit">追加</button>
+  </form>
+
+  <!-- 項目リスト -->
+  <div id="textList"></div>
+
+  <!-- 選択ボタン -->
+  <button id="selectButton">選択</button>
+
+  <!-- 関連付け確認欄 -->
+  <div id="result">
+    <h3 style="margin-top:4px; margin-bottom:4px;">関連付け確認欄:</h3>
+    <div id="relationList"></div>
+  </div>
+
+  <!-- 出力・保存ボタン -->
+  <button id="outputButton">出力</button>
+  <button id="saveButton">保存</button>
+
+  <!-- 出力欄 -->
+  <div id="output">
+    <h3 style="margin-top:4px; margin-bottom:4px;">結果:</h3>
+    <div id="outputText"></div>
+  </div>
+
+  <!-- 親子関係図セクション -->
+  <div id="graphSection">
+    <h3 style="margin-top:4px; margin-bottom:4px;">親子関係図:</h3>
+    <div id="relation-graph-container">
+      <svg id="relation-lines"></svg>
+      <div id="relation-nodes"></div>
+    </div>
+  </div>
+
+  <script>
+    // DOM要素の取得
+    const form = document.getElementById("textForm");
+    const input = document.getElementById("textInput");
+    const textList = document.getElementById("textList");
+    const selectButton = document.getElementById("selectButton");
+    const relationList = document.getElementById("relationList");
+    const outputButton = document.getElementById("outputButton");
+    const outputText = document.getElementById("outputText");
+    const saveButton = document.getElementById("saveButton");
+    const graphContainer = document.getElementById("relation-graph-container");
+    const linesSvg = document.getElementById("relation-lines");
+    const nodesDiv = document.getElementById("relation-nodes");
+
+    // データ構造
+    const relations = new Set();   // "親->子"
+    const nameSet = new Set();     // 登録済み名前を管理
+    const SYSTEM_NAMES = ["none", "any"];
+
+    // 項目を追加する関数
+    function addItem(newText, isSystem = false) {
+      if (nameSet.has(newText)) return;
+      nameSet.add(newText);
+
+      const itemDiv = document.createElement("div");
+      itemDiv.className = "item";
+      itemDiv.setAttribute("data-name", newText);
+
+      const labelLeft = document.createElement("span");
+      labelLeft.textContent = newText;
+
+      const checkbox1 = document.createElement("input");
+      checkbox1.type = "checkbox"; // 親チェック
+
+      const checkbox2 = document.createElement("input");
+      checkbox2.type = "checkbox"; // 子チェック
+
+      const labelRight = document.createElement("span");
+      labelRight.textContent = newText;
+
+      const deleteBtn = document.createElement("button");
+      deleteBtn.textContent = "削除";
+      deleteBtn.type = "button";
+      deleteBtn.disabled = isSystem;
+      deleteBtn.addEventListener("click", () => {
+        textList.removeChild(itemDiv);
+        nameSet.delete(newText);
+
+        // 関連を削除
+        [...relations].forEach((key) => {
+          if (key.startsWith(newText + "->") || key.endsWith("->" + newText)) {
+            relations.delete(key);
+            document.querySelectorAll(".relation-entry").forEach((entry) => {
+              if (entry.getAttribute("data-key") === key) {
+                entry.remove();
+              }
+            });
+          }
+        });
+
+        // 図を更新
+        drawRelationGraph();
+      });
+
+      itemDiv.appendChild(labelLeft);
+      itemDiv.appendChild(checkbox1);
+      itemDiv.appendChild(checkbox2);
+      itemDiv.appendChild(labelRight);
+      itemDiv.appendChild(deleteBtn);
+      textList.appendChild(itemDiv);
+    }
+
+    // 初期追加: "none", "any"
+    addItem("none", true);
+    addItem("any", true);
+
+    // フォーム送信時の処理（入力項目の追加）
+    form.addEventListener("submit", (event) => {
+      event.preventDefault();
+      const newText = input.value.trim();
+      if (newText === "") return;
+
+      if (nameSet.has(newText)) {
+        alert(`"${newText}" はすでに追加されています。`);
+        input.value = "";
+        return;
+      }
+
+      addItem(newText);
+      input.value = "";
+    });
+
+    // 「選択」ボタン処理（関連を登録）
+    selectButton.addEventListener("click", () => {
+      const items = document.querySelectorAll(".item");
+      let parents = [];
+      let children = [];
+
+      items.forEach((item) => {
+        const checkboxes = item.querySelectorAll("input[type='checkbox']");
+        const name = item.getAttribute("data-name");
+        if (checkboxes[0].checked) parents.push(name);
+        if (checkboxes[1].checked) children.push(name);
+      });
+
+      if (parents.length === 0 || children.length === 0) {
+        alert("親または子のチェックがありません。");
+        return;
+      }
+
+      parents.forEach((parent) => {
+        children.forEach((child) => {
+          const key = `${parent}->${child}`;
+          if (!relations.has(key)) {
+            relations.add(key);
+
+            const entry = document.createElement("div");
+            entry.className = "relation-entry";
+            entry.setAttribute("data-key", key);
+
+            const deleteBtn = document.createElement("button");
+            deleteBtn.textContent = "削除";
+            deleteBtn.addEventListener("click", () => {
+              relationList.removeChild(entry);
+              relations.delete(key);
+              drawRelationGraph();
+            });
+
+            entry.appendChild(deleteBtn);
+
+            const msg = document.createElement("span");
+            msg.textContent = `${parent} が ${child} と関連付けされました。`;
+            entry.appendChild(msg);
+
+            relationList.appendChild(entry);
+          }
+        });
+      });
+
+      // チェックボックスをリセット
+      items.forEach((item) => {
+        const checkboxes = item.querySelectorAll("input[type='checkbox']");
+        checkboxes[0].checked = false;
+        checkboxes[1].checked = false;
+      });
+
+      // 図を更新
+      drawRelationGraph();
+    });
+
+    // 「出力」ボタン処理
+    outputButton.addEventListener("click", () => {
+      const allNames = Array.from(nameSet).sort();
+
+      const parentsMap = {};
+      const childrenMap = {};
+
+      relations.forEach((relation) => {
+        const [parent, child] = relation.split("->");
+
+        if (!childrenMap[parent]) childrenMap[parent] = [];
+        if (!parentsMap[child]) parentsMap[child] = [];
+
+        childrenMap[parent].push(child);
+        parentsMap[child].push(parent);
+      });
+
+      let output = "";
+
+      allNames.forEach((name) => {
+        if (SYSTEM_NAMES.includes(name)) return; // 見出しは出力しない
+
+        const rawPrev = parentsMap[name] || [];
+        const rawNext = childrenMap[name] || [];
+
+        const hasBothSpecialParents = rawPrev.includes("none") && rawPrev.includes("any");
+        const hasBothSpecialChildren = rawNext.includes("none") && rawNext.includes("any");
+
+        output += "------\n";
+        output += `#${name}\n`;
+
+        if (!hasBothSpecialParents) {
+          rawPrev.forEach((p, i) => {
+            output += `Constraint[prev][${i}]=${p}\n`;
+          });
+        }
+
+        if (!hasBothSpecialChildren) {
+          rawNext.forEach((c, i) => {
+            output += `Constraint[next][${i}]=${c}\n`;
+          });
+        }
+      });
+
+      outputText.textContent = output || "(関連付けがありません)";
+    });
+
+    // 「保存」ボタン処理
+    saveButton.addEventListener("click", () => {
+      const text = outputText.textContent.trim();
+      if (text === "") {
+        alert("出力結果が空です。");
+        return;
+      }
+
+      const blob = new Blob([text], { type: "text/plain" });
+      const url = URL.createObjectURL(blob);
+
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "output.txt";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    });
+
+    // 親子関係図を描画する関数
+    function drawRelationGraph() {
+      nodesDiv.innerHTML = "";
+      linesSvg.innerHTML = "";
+
+      // relations の中身を [parent, child] の配列に変換
+      const relPairs = Array.from(relations).map(r => r.split("->"));
+
+      // 親と子の集合を作成
+      const parentSet = new Set(relPairs.map(pair => pair[0]));
+      const childSet = new Set(relPairs.map(pair => pair[1]));
+
+      const parents = Array.from(parentSet);
+      const children = Array.from(childSet);
+
+      // コンテナの大きさを取得
+      const width = graphContainer.clientWidth;
+      const height = graphContainer.clientHeight;
+
+      // ノード間の縦方向の間隔
+      const parentCount = parents.length;
+      const childCount = children.length;
+      const parentSpacing = parentCount > 0 ? height / (parentCount + 1) : 0;
+      const childSpacing = childCount > 0 ? height / (childCount + 1) : 0;
+
+      // 各ノードの位置情報を保持するオブジェクト
+      const nodePositions = {};
+
+      // 親ノードを左側に配置
+      parents.forEach((name, i) => {
+        const x = 100;
+        const y = (i + 1) * parentSpacing;
+        nodePositions[name] = { x, y };
+        addGraphNode(name, x, y);
+      });
+
+      // 子ノードを右側に配置
+      children.forEach((name, i) => {
+        const x = width - 100;
+        const y = (i + 1) * childSpacing;
+        nodePositions[name] = { x, y };
+        addGraphNode(name, x, y);
+      });
+
+      // 線を描画
+      relPairs.forEach(([parent, child]) => {
+        const from = nodePositions[parent];
+        const to = nodePositions[child];
+        if (!from || !to) return;
+
+        const line = document.createElementNS("http://www.w3.org/2000/svg", "line");
+        line.setAttribute("x1", from.x);
+        line.setAttribute("y1", from.y);
+        line.setAttribute("x2", to.x);
+        line.setAttribute("y2", to.y);
+        line.setAttribute("stroke", "black");
+        line.setAttribute("stroke-width", "1.5");
+        linesSvg.appendChild(line);
+      });
+    }
+
+    // グラフノードを追加（親・子ノード用）
+    function addGraphNode(name, x, y) {
+      const node = document.createElement("div");
+      node.className = "graph-node";
+      node.textContent = name;
+      node.style.left = (x - 20) + "px";  // 中央寄せ調整
+      node.style.top = (y - 10) + "px";   // 中央寄せ調整
+      nodesDiv.appendChild(node);
+    }
+  </script>
+</body>
+</html>
