@@ -165,7 +165,14 @@
   <div id="graphSection">
     <h3 style="margin-top:4px; margin-bottom:4px;">親子関係図:</h3>
     <div id="relation-graph-container">
-      <svg id="relation-lines"></svg>
+      <svg id="relation-lines">
+        <defs>
+          <marker id="arrowhead" markerWidth="10" markerHeight="7"
+            refX="10" refY="3.5" orient="auto" markerUnits="strokeWidth">
+            <polygon points="0 0, 10 3.5, 0 7" fill="black" />
+          </marker>
+        </defs>
+      </svg>
       <div id="relation-nodes"></div>
     </div>
   </div>
@@ -431,7 +438,7 @@
         addGraphNode(name, x, y);
       });
 
-      // 線を描画
+      // 矢印付きの線を描画
       relPairs.forEach(([parent, child]) => {
         const from = nodePositions[parent];
         const to = nodePositions[child];
@@ -444,6 +451,7 @@
         line.setAttribute("y2", to.y);
         line.setAttribute("stroke", "black");
         line.setAttribute("stroke-width", "1.5");
+        line.setAttribute("marker-end", "url(#arrowhead)");
         linesSvg.appendChild(line);
       });
     }
